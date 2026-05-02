@@ -1,0 +1,300 @@
+{
+  "info": {
+    "name": "MarketHub — Session 1 Auth API",
+    "_postman_id": "markethub-session1",
+    "description": "Complete auth endpoint tests for MarketHub Session 1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {"key": "base_url", "value": "http://localhost:8000/api/v1"},
+    {"key": "access_token", "value": ""},
+    {"key": "refresh_token", "value": ""},
+    {"key": "verify_token", "value": ""},
+    {"key": "reset_token", "value": ""}
+  ],
+  "item": [
+    {
+      "name": "1. Register (Buyer)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{base_url}}/auth/register/", "host": ["{{base_url}}"], "path": ["auth", "register", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"buyer@test.com\",\n  \"password\": \"TestPass1!\",\n  \"password_confirm\": \"TestPass1!\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"Buyer\",\n  \"role\": \"buyer\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('success=true', () => pm.expect(pm.response.json().success).to.be.true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Register (Seller)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{base_url}}/auth/register/", "host": ["{{base_url}}"], "path": ["auth", "register", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"seller@test.com\",\n  \"password\": \"TestPass1!\",\n  \"password_confirm\": \"TestPass1!\",\n  \"role\": \"seller\",\n  \"store_name\": \"My Test Store\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('Status 201', () => pm.response.to.have.status(201));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Login",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"buyer@test.com\",\n  \"password\": \"TestPass1!\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Has access token', () => pm.expect(json.data.access).to.be.a('string'));",
+              "pm.collectionVariables.set('access_token', json.data.access);",
+              "pm.test('success=true', () => pm.expect(json.success).to.be.true);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Login — Wrong Password (400)",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{base_url}}/auth/login/", "host": ["{{base_url}}"], "path": ["auth", "login", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"buyer@test.com\",\n  \"password\": \"WrongPassword\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 401', () => pm.response.to.have.status(401));",
+              "pm.test('success=false', () => pm.expect(pm.response.json().success).to.be.false);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Get Profile (me)",
+      "request": {
+        "method": "GET",
+        "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}],
+        "url": {"raw": "{{base_url}}/auth/me/", "host": ["{{base_url}}"], "path": ["auth", "me", ""]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Has email', () => pm.expect(json.data.email).to.be.a('string'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Update Profile (PATCH me)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{access_token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{base_url}}/auth/me/", "host": ["{{base_url}}"], "path": ["auth", "me", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"first_name\": \"Updated\",\n  \"last_name\": \"Profile\",\n  \"phone_number\": \"+923001234567\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Name updated', () => pm.expect(pm.response.json().data.first_name).to.eq('Updated'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Refresh Token",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{base_url}}/auth/token/refresh/", "host": ["{{base_url}}"], "path": ["auth", "token", "refresh", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Has new access token', () => pm.expect(pm.response.json().data.access).to.be.a('string'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Enable 2FA",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Authorization", "value": "Bearer {{access_token}}"}],
+        "url": {"raw": "{{base_url}}/auth/2fa/enable/", "host": ["{{base_url}}"], "path": ["auth", "2fa", "enable", ""]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('Has QR code', () => pm.expect(json.data.qr_code).to.include('data:image/png;base64,'));",
+              "pm.test('Has secret', () => pm.expect(json.data.secret).to.be.a('string'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Verify 2FA (use secret from step 8)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{access_token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{base_url}}/auth/2fa/verify/", "host": ["{{base_url}}"], "path": ["auth", "2fa", "verify", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"totp_code\": \"123456\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('Response received', () => pm.response.to.have.status(400));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {"key": "Authorization", "value": "Bearer {{access_token}}"},
+          {"key": "Content-Type", "value": "application/json"}
+        ],
+        "url": {"raw": "{{base_url}}/auth/logout/", "host": ["{{base_url}}"], "path": ["auth", "logout", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refresh\": \"{{refresh_token}}\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Password Reset Request",
+      "request": {
+        "method": "POST",
+        "header": [{"key": "Content-Type", "value": "application/json"}],
+        "url": {"raw": "{{base_url}}/auth/password/reset/", "host": ["{{base_url}}"], "path": ["auth", "password", "reset", ""]},
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"buyer@test.com\"\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('Status 200', () => pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. API Docs (Swagger UI)",
+      "request": {
+        "method": "GET",
+        "url": {"raw": "http://localhost:8000/api/docs/", "host": ["http://localhost:8000"], "path": ["api", "docs", ""]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": ["pm.test('Swagger loads', () => pm.response.to.have.status(200));"]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13. Health Check",
+      "request": {
+        "method": "GET",
+        "url": {"raw": "http://localhost:8000/api/health/", "host": ["http://localhost:8000"], "path": ["api", "health", ""]}
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "const json = pm.response.json();",
+              "pm.test('DB ok', () => pm.expect(json.data.db).to.eq('ok'));",
+              "pm.test('Redis ok', () => pm.expect(json.data.redis).to.eq('ok'));"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

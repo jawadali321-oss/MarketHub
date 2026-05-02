@@ -1,0 +1,245 @@
+{
+  "info": {
+    "name": "MarketHub S2 – Products & Categories",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "markethub-s2-products"
+  },
+  "variable": [
+    { "key": "base_url",      "value": "http://localhost:8000" },
+    { "key": "seller_token",  "value": "" },
+    { "key": "product_id",    "value": "" },
+    { "key": "category_id",   "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 – Auth: Login as Seller",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('seller_token', json.data.access);",
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Has access token', () => pm.expect(json.data.access).to.be.a('string'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "url": "{{base_url}}/api/v1/auth/login/",
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"email\": \"seller@markethub.test\", \"password\": \"TestPass1!\" }"
+        }
+      }
+    },
+    {
+      "name": "1 – POST /categories/ → 201",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('category_id', json.id);",
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Has id', () => pm.expect(json.id).to.be.a('number'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{seller_token}}" },
+          { "key": "Content-Type",  "value": "application/json" }
+        ],
+        "url": "{{base_url}}/api/v1/categories/",
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"name\": \"Electronics\", \"slug\": \"electronics\", \"level\": 1, \"display_order\": 1, \"is_active\": true }"
+        }
+      }
+    },
+    {
+      "name": "2 – GET /categories/ → 200 + nested tree",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Is array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/categories/"
+      }
+    },
+    {
+      "name": "3 – POST /products/ → 201 (seller auth)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var json = pm.response.json();",
+              "pm.collectionVariables.set('product_id', json.id);",
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('UUID id', () => pm.expect(json.id).to.match(/^[0-9a-f-]{36}$/i));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{seller_token}}" },
+          { "key": "Content-Type",  "value": "application/json" }
+        ],
+        "url": "{{base_url}}/api/v1/products/",
+        "body": {
+          "mode": "raw",
+          "raw": "{ \"title\": \"Premium Cotton Shirt\", \"price\": \"1299.00\", \"currency\": \"PKR\", \"category\": {{category_id}}, \"stock\": 50, \"description\": \"100% premium cotton shirt in multiple colors\" }"
+        }
+      }
+    },
+    {
+      "name": "4 – GET /products/search/?q=shirt → 200 + FTS results",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Has results array', () => { var j = pm.response.json(); pm.expect(j.results || j).to.be.an('array'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/v1/products/search/?q=shirt",
+          "query": [{ "key": "q", "value": "shirt" }]
+        }
+      }
+    },
+    {
+      "name": "5 – POST /products/{id}/images/ → 201 + processing status",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "pm.test('Status processing', () => pm.expect(pm.response.json().status).to.eql('processing'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{seller_token}}" }],
+        "url": "{{base_url}}/api/v1/products/{{product_id}}/images/",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "image", "type": "file", "src": "test_image.jpg" }]
+        }
+      }
+    },
+    {
+      "name": "6 – POST /products/bulk-upload/ → 201 + error report",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 201', () => pm.response.to.have.status(201));",
+              "var j = pm.response.json();",
+              "pm.test('Has success_count', () => pm.expect(j.success_count).to.be.a('number'));",
+              "pm.test('Has error_count', () => pm.expect(j.error_count).to.be.a('number'));",
+              "pm.test('Has errors array', () => pm.expect(j.errors).to.be.an('array'));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{seller_token}}" }],
+        "url": "{{base_url}}/api/v1/products/bulk-upload/",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "sample_bulk_upload_template.csv" }]
+        }
+      }
+    },
+    {
+      "name": "7 – DELETE /products/{id}/ → 204 (soft delete)",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 204', () => pm.response.to.have.status(204));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{seller_token}}" }],
+        "url": "{{base_url}}/api/v1/products/{{product_id}}/"
+      }
+    },
+    {
+      "name": "8 – GET /products/ with filters → 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{base_url}}/api/v1/products/?min_price=500&max_price=5000&currency=PKR&in_stock=true",
+          "query": [
+            { "key": "min_price",  "value": "500" },
+            { "key": "max_price",  "value": "5000" },
+            { "key": "currency",   "value": "PKR" },
+            { "key": "in_stock",   "value": "true" }
+          ]
+        }
+      }
+    },
+    {
+      "name": "9 – GET /products/ cursor pagination → 200 + next cursor",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Status 200', () => pm.response.to.have.status(200));",
+              "pm.test('Has next cursor', () => { var j = pm.response.json(); pm.expect(j.next || null).to.satisfy(v => v === null || typeof v === 'string'); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/v1/products/?page_size=5"
+      }
+    }
+  ]
+}

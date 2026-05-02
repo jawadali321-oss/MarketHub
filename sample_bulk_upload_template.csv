@@ -1,0 +1,9 @@
+title,price,category_id,stock,currency,description,compare_at_price,discount_pct,sale_start,sale_end
+Cotton T-Shirt,999,1,50,PKR,Premium 100% cotton t-shirt available in multiple colors,1299,,
+Linen Kurta,1499,1,30,PKR,Traditional linen kurta with embroidery,1999,,
+Running Shoes,4999,2,20,PKR,Lightweight running shoes with foam sole,6499,10,2025-06-01T00:00:00Z,2025-06-30T23:59:59Z
+Wireless Earbuds,2999,3,15,PKR,Bluetooth 5.0 earbuds 24hr battery life,3999,,
+Leather Wallet,799,4,100,PKR,Genuine leather bi-fold wallet RFID blocking,1099,,
+INVALID_ROW,not_a_price,999,abc,PKR,This row has errors and should appear in error report,,,,
+Steel Water Bottle,599,5,200,PKR,1 litre insulated stainless steel bottle BPA free,799,,
+Yoga Mat,1199,6,40,PKR,6mm non-slip TPE yoga mat with carry strap,1499,,
